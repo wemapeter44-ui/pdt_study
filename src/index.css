@@ -1,0 +1,211 @@
+﻿
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================
+   PDT STUDY — GLOBAL DESIGN SYSTEM
+========================================= */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+
+    --background: #080F1C;
+    --surface: #111B2B;
+    --surface-hover: #172438;
+    --border: #263244;
+
+    --accent: #22D3EE;
+    --accent-hover: #06B6D4;
+    --accent-bg: rgba(34, 211, 238, 0.10);
+
+    --text: #F8FAFC;
+    --muted: #94A3B8;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-width: 320px;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-screen antialiased;
+    background-color: var(--background);
+    color: var(--text);
+    font-family: Inter, system-ui, sans-serif;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  button {
+    @apply transition-colors duration-200;
+  }
+
+  button:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  ::selection {
+    background: rgba(34, 211, 238, 0.25);
+    color: white;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #64748B;
+  }
+}
+
+/* =========================================
+   REUSABLE COMPONENTS
+========================================= */
+
+@layer components {
+
+  /* Cards */
+
+  .card {
+    @apply w-full border shadow-sm;
+    background-color: var(--surface);
+    border-color: var(--border);
+    border-radius: 12px;
+  }
+
+  /* Form inputs */
+
+  .input {
+    @apply w-full h-12 px-4 text-base outline-none transition-all duration-200;
+    background-color: #0B1422;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: white;
+  }
+
+  .input::placeholder {
+    color: #64748B;
+  }
+
+  .input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  /* Primary button */
+
+  .btn-primary {
+    @apply w-full h-12 flex justify-center items-center gap-2;
+    @apply font-medium text-base text-[#080F1C];
+    @apply transition-all duration-200;
+    background-color: var(--accent);
+    border-radius: 8px;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--accent-hover);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* Google button */
+
+  .btn-google {
+    @apply w-full h-12 flex justify-center items-center gap-2;
+    @apply font-medium text-base text-white;
+    @apply transition-all duration-200;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .btn-google:hover {
+    background-color: var(--surface-hover);
+  }
+
+  .btn-google:active {
+    transform: scale(0.98);
+  }
+
+  /* Secondary button */
+
+  .btn-secondary {
+    @apply flex items-center justify-center gap-2 px-4 py-2;
+    @apply text-sm font-medium text-white transition-all;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--surface-hover);
+  }
+}
+
+/* =========================================
+   SCROLLBAR
+========================================= */
+
+@layer utilities {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 480px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
