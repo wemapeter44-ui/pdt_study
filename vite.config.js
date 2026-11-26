@@ -6,9 +6,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   plugins: [
     react(),
+
     VitePWA({
       registerType: 'autoUpdate',
+
       includeAssets: ['pdt-study-icon.png'],
+
       manifest: {
         id: '/',
         name: 'PDT Study',
@@ -20,15 +23,23 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
+
         icons: [
           {
             src: '/pdt-study-icon.png',
-            sizes: '1024x1024',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pdt-study-icon.png',
+            sizes: '512x512',
             type: 'image/png',
             purpose: 'any',
           },
         ],
       },
+
       workbox: {
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
