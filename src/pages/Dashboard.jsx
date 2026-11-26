@@ -12,15 +12,19 @@ import {
   ChartNoAxesColumnIncreasing,
   BookMarked,
   GraduationCap,
-  Clock3,
   ChevronRight,
   LayoutGrid,
+  ClipboardList,
+  Target,
 } from 'lucide-react';
 
 const initialStats = {
   sessions: 0,
   notes: 0,
   cards: 0,
+  quizzes: 0,
+  attempts: 0,
+  averageScore: 0,
 };
 
 function StatCard({ label, value, icon: Icon, loading }) {
@@ -46,13 +50,14 @@ export default function Dashboard() {
   const { profile, user } = useAuth();
 
   const [stats, setStats] = useState(initialStats);
+  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statsError, setStatsError] = useState(false);
 
   useEffect(() => {
     let active = true;
 
-    async function fetchStats() {
+    async function fetchDashboardData() {
       if (!user?.id) {
         setLoading(false);
         return;
@@ -62,7 +67,14 @@ export default function Dashboard() {
       setStatsError(false);
 
       try {
-        const [sessionsRes, notesRes, cardsRes] = await Promise.all([
+        const [
+          sessionsRes,
+          notesRes,
+          cardsRes,
+          subjectsRes,
+          quizzesRes,
+          attemptsRes,
+        ] = await Promise.all([
           supabase
             .from('tutor_conversations')
             .select('*', { count: 'exact', head: true })
@@ -77,22 +89,62 @@ export default function Dashboard() {
             .from('flashcards')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id),
+
+          supabase
+            .from('subjects')
+            .select('id, name, color')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true }),
+
+          supabase
+            .from('study_quizzes')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id),
+
+          supabase
+            .from('study_quiz_attempts')
+            .select('score, total_questions')
+            .eq('user_id', user.id),
         ]);
 
         if (!active) return;
 
-        const hasError =
-          sessionsRes.error ||
-          notesRes.error ||
-          cardsRes.error;
+        const errors = [
+          sessionsRes.error,
+          notesRes.error,
+          cardsRes.error,
+          subjectsRes.error,
+          quizzesRes.error,
+          attemptsRes.error,
+        ];
+
+        setStatsError(errors.some(Boolean));
+
+        const attempts = attemptsRes.data || [];
+
+        const averageScore = attempts.length
+          ? Math.round(
+              attempts.reduce(
+                (sum, attempt) =>
+                  sum +
+                  (attempt.score /
+                    Math.max(attempt.total_questions || 1, 1)) *
+                    100,
+                0
+              ) / attempts.length
+            )
+          : 0;
 
         setStats({
           sessions: sessionsRes.count ?? 0,
           notes: notesRes.count ?? 0,
           cards: cardsRes.count ?? 0,
+          quizzes: quizzesRes.count ?? 0,
+          attempts: attempts.length,
+          averageScore,
         });
 
-        setStatsError(Boolean(hasError));
+        setSubjects(subjectsRes.data || []);
       } catch (error) {
         console.error('Dashboard statistics error:', error);
 
@@ -102,7 +154,7 @@ export default function Dashboard() {
       }
     }
 
-    fetchStats();
+    fetchDashboardData();
 
     return () => {
       active = false;
@@ -136,7 +188,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* STATISTICS */}
+      {/* LEARNING ACTIVITY */}
       <section>
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-white">
@@ -177,7 +229,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* PROGRESS */}
+      {/* ACADEMIC PROGRESS */}
       <section className="rounded-lg border border-[#263244] bg-[#111B2B] p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -193,29 +245,73 @@ export default function Dashboard() {
                 Academic Progress
               </h2>
               <p className="mt-1 text-xs text-slate-400">
-                Your learning performance.
+                Based on your completed quiz attempts.
               </p>
             </div>
           </div>
 
           <Link
-            to="/progress"
-            className="flex items-center gap-1 text-xs font-medium text-[#22D3EE] hover:text-white transition-colors"
+            to="/quizzes"
+            className="flex items-center gap-1 text-xs font-medium text-[#22D3EE] transition-colors hover:text-white"
           >
-            Details
+            Quizzes
             <ArrowUpRight size={15} />
           </Link>
         </div>
 
-        <div className="mt-6 border-t border-[#263244] pt-5">
-          <p className="text-sm text-slate-400">
-            Progress tracking will appear here as you complete learning
-            activities and assessments.
-          </p>
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-[#263244] pt-5 sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-slate-400">Saved quizzes</p>
+            <p className="mt-2 text-2xl font-semibold text-white">
+              {loading ? '—' : stats.quizzes}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs text-slate-400">Completed attempts</p>
+            <p className="mt-2 text-2xl font-semibold text-white">
+              {loading ? '—' : stats.attempts}
+            </p>
+          </div>
+
+          <div className="col-span-2 sm:col-span-1">
+            <p className="text-xs text-slate-400">Average score</p>
+            <p className="mt-2 text-2xl font-semibold text-[#22D3EE]">
+              {loading
+                ? '—'
+                : stats.attempts
+                  ? `${stats.averageScore}%`
+                  : '—'}
+            </p>
+          </div>
         </div>
+
+        {!loading && stats.attempts > 0 && (
+          <div className="mt-5">
+            <div className="mb-2 flex justify-between text-xs">
+              <span className="text-slate-400">Average quiz performance</span>
+              <span className="text-white">{stats.averageScore}%</span>
+            </div>
+
+            <div className="h-2 overflow-hidden rounded-full bg-[#263244]">
+              <div
+                className="h-full rounded-full bg-[#22D3EE] transition-all duration-500"
+                style={{
+                  width: `${Math.min(stats.averageScore, 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {!loading && stats.attempts === 0 && (
+          <p className="mt-5 border-t border-[#263244] pt-4 text-xs text-slate-400">
+            Complete your first quiz to start tracking your assessment performance.
+          </p>
+        )}
       </section>
 
-      {/* SUBJECTS */}
+      {/* MY SUBJECTS */}
       <section>
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -227,27 +323,86 @@ export default function Dashboard() {
             </div>
 
             <p className="mt-1 text-xs text-slate-500">
-              Your enrolled learning areas.
+              Your learning areas.
             </p>
           </div>
+
+          <Link
+            to="/subjects"
+            className="flex items-center gap-1 text-xs font-medium text-[#22D3EE] hover:text-white"
+          >
+            View all
+            <ChevronRight size={15} />
+          </Link>
         </div>
 
-        <div className="rounded-lg border border-dashed border-[#334155] bg-[#111B2B]/50 px-5 py-10 text-center">
-          <BookMarked
-            size={27}
-            strokeWidth={1.5}
-            className="mx-auto text-slate-500"
-          />
+        {loading ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[1, 2].map((item) => (
+              <div
+                key={item}
+                className="h-20 animate-pulse rounded-lg border border-[#263244] bg-[#111B2B]"
+              />
+            ))}
+          </div>
+        ) : subjects.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {subjects.slice(0, 4).map((subject) => (
+              <Link
+                key={subject.id}
+                to={`/subjects/${subject.id}`}
+                className="flex items-center gap-3 rounded-lg border border-[#263244] bg-[#111B2B] p-4 transition-colors hover:border-[#22D3EE]/50"
+              >
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
+                  style={{
+                    backgroundColor: `${subject.color || '#22D3EE'}20`,
+                  }}
+                >
+                  <BookMarked
+                    size={19}
+                    style={{ color: subject.color || '#22D3EE' }}
+                  />
+                </div>
 
-          <h3 className="mt-4 text-sm font-medium text-white">
-            No subjects available
-          </h3>
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-sm font-medium text-white">
+                    {subject.name}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Open subject
+                  </p>
+                </div>
 
-          <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-slate-400">
-            Your subjects and learning materials will appear here once
-            the subject management feature is connected.
-          </p>
-        </div>
+                <ChevronRight size={17} className="text-slate-500" />
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-[#334155] bg-[#111B2B]/50 px-5 py-10 text-center">
+            <BookMarked
+              size={27}
+              strokeWidth={1.5}
+              className="mx-auto text-slate-500"
+            />
+
+            <h3 className="mt-4 text-sm font-medium text-white">
+              No subjects available
+            </h3>
+
+            <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-slate-400">
+              Add subjects to your learning workspace to see them here.
+            </p>
+
+            <Link
+              to="/subjects"
+              className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-[#22D3EE] hover:text-white"
+            >
+              Manage subjects
+              <ChevronRight size={14} />
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* STUDY TOOLS */}
@@ -264,7 +419,10 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 
-          <div className="flex items-center gap-4 rounded-lg border border-[#263244] bg-[#111B2B] p-4">
+          <Link
+            to="/notes"
+            className="flex items-center gap-4 rounded-lg border border-[#263244] bg-[#111B2B] p-4 transition-colors hover:border-[#22D3EE]/50"
+          >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#22D3EE]/10">
               <FileText size={19} className="text-[#22D3EE]" />
             </div>
@@ -274,14 +432,17 @@ export default function Dashboard() {
                 Study Notes
               </h3>
               <p className="mt-1 text-xs text-slate-400">
-                Your saved academic notes.
+                {loading ? 'Loading...' : `${stats.notes} saved notes`}
               </p>
             </div>
 
             <ChevronRight size={17} className="text-slate-500" />
-          </div>
+          </Link>
 
-          <div className="flex items-center gap-4 rounded-lg border border-[#263244] bg-[#111B2B] p-4">
+          <Link
+            to="/flashcards"
+            className="flex items-center gap-4 rounded-lg border border-[#263244] bg-[#111B2B] p-4 transition-colors hover:border-[#22D3EE]/50"
+          >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#22D3EE]/10">
               <Layers size={19} className="text-[#22D3EE]" />
             </div>
@@ -291,12 +452,52 @@ export default function Dashboard() {
                 Flashcards
               </h3>
               <p className="mt-1 text-xs text-slate-400">
-                Review and practise concepts.
+                {loading ? 'Loading...' : `${stats.cards} saved flashcards`}
               </p>
             </div>
 
             <ChevronRight size={17} className="text-slate-500" />
-          </div>
+          </Link>
+
+          <Link
+            to="/quizzes"
+            className="flex items-center gap-4 rounded-lg border border-[#263244] bg-[#111B2B] p-4 transition-colors hover:border-[#22D3EE]/50"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#22D3EE]/10">
+              <ClipboardList size={19} className="text-[#22D3EE]" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-medium text-white">
+                Quizzes
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">
+                {loading ? 'Loading...' : `${stats.quizzes} saved quizzes`}
+              </p>
+            </div>
+
+            <ChevronRight size={17} className="text-slate-500" />
+          </Link>
+
+          <Link
+            to="/planner"
+            className="flex items-center gap-4 rounded-lg border border-[#263244] bg-[#111B2B] p-4 transition-colors hover:border-[#22D3EE]/50"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#22D3EE]/10">
+              <Target size={19} className="text-[#22D3EE]" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-medium text-white">
+                Study Planner
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">
+                Organise your learning tasks.
+              </p>
+            </div>
+
+            <ChevronRight size={17} className="text-slate-500" />
+          </Link>
 
         </div>
       </section>

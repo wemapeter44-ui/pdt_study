@@ -15,6 +15,7 @@ import TopicDetail from './pages/TopicDetail';
 import Notes from './pages/Notes';
 import Flashcards from './pages/Flashcards';
 import Quizzes from './pages/Quizzes';
+import Planner from './pages/Planner';
 
 import AppLayout from './layouts/AppLayout';
 
@@ -73,9 +74,9 @@ function AppRoutes() {
         <Route path="notes" element={<Notes />} />
         <Route path="flashcards" element={<Flashcards />} />
         <Route path="quizzes" element={<Quizzes />} />
+        <Route path="planner" element={<Planner />} />
 
         <Route path="settings" element={<Settings />} />
-        <Route path="planner" element={<div className="p-6 text-white">Study Planner coming soon.</div>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

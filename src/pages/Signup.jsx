@@ -2,6 +2,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import BrandLogo from '../components/BrandLogo';
+import BrandFooter from '../components/BrandFooter';
+
 import {
   Mail,
   Lock,
@@ -13,7 +16,6 @@ import {
   AlertCircle,
   CheckCircle2
 } from 'lucide-react';
-import BrandFooter from '../components/BrandFooter';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
@@ -87,12 +89,13 @@ export default function Signup() {
       <div className="w-full max-w-md">
 
         {/* Brand heading */}
-        <div className="mb-7 text-center">
-          <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-md border border-[#263244] bg-[#111B2B]">
-            <User size={21} className="text-[#22D3EE]" />
-          </div>
+        <div className="mb-7 flex flex-col items-center text-center">
+          <BrandLogo
+            size="text-2xl"
+            iconSize="w-12 h-12"
+          />
 
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="mt-7 text-2xl font-semibold tracking-tight text-white">
             Create your account
           </h1>
 
@@ -104,7 +107,6 @@ export default function Signup() {
         {/* Signup form */}
         <div className="rounded-lg border border-[#263244] bg-[#111B2B] p-5 sm:p-7">
 
-          {/* Google signup */}
           <button
             type="button"
             onClick={loginWithGoogle}
@@ -124,7 +126,6 @@ export default function Signup() {
             Continue with Google
           </button>
 
-          {/* Divider */}
           <div className="my-6 flex items-center gap-4">
             <div className="h-px flex-1 bg-[#263244]" />
             <span className="text-xs text-[#64748B]">OR</span>
@@ -133,7 +134,6 @@ export default function Signup() {
 
           <form onSubmit={submit} className="space-y-4">
 
-            {/* Full name */}
             <div>
               <label className="mb-2 block text-sm font-medium text-[#D1D5DB]">
                 Full name
@@ -155,7 +155,6 @@ export default function Signup() {
               </div>
             </div>
 
-            {/* Email */}
             <div>
               <label className="mb-2 block text-sm font-medium text-[#D1D5DB]">
                 Email address
@@ -176,7 +175,6 @@ export default function Signup() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="mb-2 block text-sm font-medium text-[#D1D5DB]">
                 Password
@@ -211,7 +209,6 @@ export default function Signup() {
               </p>
             </div>
 
-            {/* Error */}
             {err && (
               <div role="alert" className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
                 <AlertCircle size={17} className="mt-0.5 shrink-0" />
@@ -219,7 +216,6 @@ export default function Signup() {
               </div>
             )}
 
-            {/* Success */}
             {msg && (
               <div role="status" className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">
                 <CheckCircle2 size={17} className="mt-0.5 shrink-0" />
@@ -227,7 +223,6 @@ export default function Signup() {
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={busy || googleBusy}
@@ -248,7 +243,6 @@ export default function Signup() {
 
           </form>
 
-          {/* Sign in */}
           <div className="mt-6 border-t border-[#263244] pt-5 text-center text-sm text-[#94A3B8]">
             Already have an account?{' '}
             <Link

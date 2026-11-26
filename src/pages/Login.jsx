@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+import BrandLogo from '../components/BrandLogo';
+import BrandFooter from '../components/BrandFooter';
+
 import {
   Mail,
   Lock,
@@ -11,8 +14,6 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
-
-import BrandFooter from '../components/BrandFooter';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -45,7 +46,7 @@ export default function Login() {
       const destination = loc.state?.from?.pathname || '/';
 
       nav(destination, { replace: true });
-    } catch (error) {
+    } catch {
       setErr('Unable to sign in. Please try again.');
     } finally {
       setBusy(false);
@@ -68,7 +69,7 @@ export default function Login() {
         setErr(error.message);
         setGoogleBusy(false);
       }
-    } catch (error) {
+    } catch {
       setErr('Google sign-in is currently unavailable.');
       setGoogleBusy(false);
     }
@@ -80,22 +81,15 @@ export default function Login() {
       <div className="w-full max-w-md">
 
         {/* BRAND */}
-        <div className="text-center mb-8">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <BrandLogo
+            size="text-2xl"
+            iconSize="w-12 h-12"
+          />
 
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-lg border border-[#263244] bg-[#111B2B] mb-4">
-            <span className="text-lg font-bold tracking-tight text-[#22D3EE]">
-              PDT
-            </span>
-          </div>
-
-          <h1 className="text-xl font-semibold text-white tracking-tight">
-            PDT <span className="text-[#22D3EE]">Study</span>
-          </h1>
-
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="mt-4 text-xs text-slate-500">
             Student Learning Platform
           </p>
-
         </div>
 
         {/* LOGIN PANEL */}
@@ -111,7 +105,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* GOOGLE LOGIN */}
           <button
             type="button"
             onClick={loginWithGoogle}
@@ -132,17 +125,14 @@ export default function Login() {
             Continue with Google
           </button>
 
-          {/* DIVIDER */}
           <div className="flex items-center gap-3 my-6">
             <div className="h-px flex-1 bg-[#263244]" />
             <span className="text-xs text-slate-500">OR</span>
             <div className="h-px flex-1 bg-[#263244]" />
           </div>
 
-          {/* LOGIN FORM */}
           <form onSubmit={submit} className="space-y-5">
 
-            {/* EMAIL */}
             <div>
               <label
                 htmlFor="email"
@@ -170,7 +160,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* PASSWORD */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label
@@ -220,7 +209,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* ERROR */}
             {err && (
               <div
                 role="alert"
@@ -230,7 +218,6 @@ export default function Login() {
               </div>
             )}
 
-            {/* SUBMIT */}
             <button
               type="submit"
               disabled={busy || googleBusy}
@@ -251,7 +238,6 @@ export default function Login() {
 
           </form>
 
-          {/* SIGNUP */}
           <div className="mt-7 border-t border-[#263244] pt-6 text-center">
             <p className="text-sm text-slate-400">
               Don't have an account?{' '}
@@ -266,7 +252,6 @@ export default function Login() {
 
         </section>
 
-        {/* FOOTER */}
         <div className="mt-7 text-center">
           <BrandFooter />
         </div>

@@ -13,7 +13,9 @@ import {
   Settings,
   LogOut,
   MoreHorizontal,
-  X
+  X,
+  Download,
+  Smartphone,
 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
@@ -62,11 +64,48 @@ export default function AppLayout() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
   const isTutorPage = location.pathname === '/tutor';
 
   useEffect(() => {
     setMoreOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+
+    setIsInstalled(standalone);
+
+    function handleInstallAvailable(event) {
+      event.preventDefault();
+      setInstallPrompt(event);
+    }
+
+    function handleInstalled() {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    }
+
+    window.addEventListener(
+      'beforeinstallprompt',
+      handleInstallAvailable
+    );
+
+    window.addEventListener('appinstalled', handleInstalled);
+
+    return () => {
+      window.removeEventListener(
+        'beforeinstallprompt',
+        handleInstallAvailable
+      );
+
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
 
   const displayName =
     profile?.full_name ||
@@ -95,6 +134,18 @@ export default function AppLayout() {
     moreItems.some(item => location.pathname.startsWith(item.path)) ||
     location.pathname.startsWith('/settings');
 
+  async function handleInstall() {
+    if (!installPrompt) return;
+
+    await installPrompt.prompt();
+
+    const result = await installPrompt.userChoice;
+
+    if (result.outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  }
+
   async function handleSignOut() {
     if (signingOut) return;
 
@@ -109,6 +160,25 @@ export default function AppLayout() {
       setSigningOut(false);
     }
   }
+
+  const InstallButton = ({ mobile = false }) => {
+    if (isInstalled || !installPrompt) return null;
+
+    return (
+      <button
+        type="button"
+        onClick={handleInstall}
+        className={`flex items-center justify-center gap-2 rounded-md bg-[#22D3EE] font-semibold text-[#080F1C] transition hover:bg-[#67E8F9] ${focusRing} ${
+          mobile
+            ? 'h-9 px-3 text-xs'
+            : 'w-full px-3 py-2.5 text-sm'
+        }`}
+      >
+        <Download size={mobile ? 15 : 17} />
+        Install App
+      </button>
+    );
+  };
 
   return (
     <div className="flex min-h-[100dvh] bg-[#080F1C] text-[#E2E8F0]">
@@ -126,7 +196,6 @@ export default function AppLayout() {
         >
           {NAV_GROUPS.map(group => (
             <div key={group.label}>
-
               <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-[#64748B]">
                 {group.label}
               </p>
@@ -165,7 +234,9 @@ export default function AppLayout() {
         </nav>
 
         {/* Account section */}
-        <div className="shrink-0 space-y-1 border-t border-[#263244] p-3">
+        <div className="shrink-0 space-y-2 border-t border-[#263244] p-3">
+
+          <InstallButton />
 
           <NavLink to="/settings" className={desktopLink}>
             <Settings size={17} className="text-[#64748B]" />
@@ -217,13 +288,17 @@ export default function AppLayout() {
 
             <BrandLogo size="text-lg" iconSize="w-7 h-7" />
 
-            <NavLink
-              to="/settings"
-              aria-label="Account and settings"
-              className={`flex h-9 w-9 items-center justify-center rounded-md border border-[#263244] bg-[#111B2B] text-xs font-semibold text-[#22D3EE] ${focusRing}`}
-            >
-              {initialsOf(displayName)}
-            </NavLink>
+            <div className="flex items-center gap-2">
+              <InstallButton mobile />
+
+              <NavLink
+                to="/settings"
+                aria-label="Account and settings"
+                className={`flex h-9 w-9 items-center justify-center rounded-md border border-[#263244] bg-[#111B2B] text-xs font-semibold text-[#22D3EE] ${focusRing}`}
+              >
+                {initialsOf(displayName)}
+              </NavLink>
+            </div>
           </header>
         )}
 
@@ -333,6 +408,8 @@ export default function AppLayout() {
                 </div>
 
                 <div className="space-y-1">
+
+                  <InstallButton />
 
                   {[...moreItems, {
                     path: '/settings',
