@@ -49,11 +49,17 @@ const styles = `
 @keyframes qz-ring { from { stroke-dashoffset: ${RING}; } }
 @keyframes qz-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .qz-orb { animation: qz-float 14s ease-in-out infinite; }
+@keyframes qz-skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.qz-skel {
+  background: linear-gradient(90deg, rgba(255,255,255,.05) 25%, rgba(255,255,255,.14) 50%, rgba(255,255,255,.05) 75%);
+  background-size: 200% 100%;
+  animation: qz-skel 1.6s ease-in-out infinite;
+}
 .qz-rise { animation: qz-rise .55s cubic-bezier(.2,.7,.2,1) both; }
 .qz-ring { animation: qz-ring 1.2s cubic-bezier(.2,.7,.2,1) both; }
 .qz-bar { transform-origin: left; animation: qz-bar 1s cubic-bezier(.2,.7,.2,1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .qz-orb, .qz-rise, .qz-ring, .qz-bar { animation: none !important; }
+  .qz-orb, .qz-rise, .qz-ring, .qz-bar, .qz-skel { animation: none !important; }
 }
 `;
 
@@ -66,6 +72,10 @@ function Backdrop() {
       <div className="qz-orb absolute -bottom-48 left-1/3 w-[28rem] h-[28rem] rounded-full bg-blue-600/15 blur-[120px]" style={{ animationDelay: '-9s' }} />
     </div>
   );
+}
+
+function Skeleton({ className = '' }) {
+  return <span aria-hidden className={`qz-skel block rounded-lg ${className}`} />;
 }
 
 // Counts up to a number when it first loads
@@ -115,7 +125,7 @@ function StatCard({ label, value, icon: Icon, loading, accent, delay = 0 }) {
 
         <div className="relative mt-4 text-3xl font-bold tabular-nums text-white sm:text-4xl">
           {loading ? (
-            <span className="inline-block h-9 w-12 animate-pulse rounded-lg bg-white/10" />
+            <Skeleton className="h-9 w-14" />
           ) : (
             <CountUp value={value} />
           )}
@@ -162,7 +172,7 @@ function ResourceLink({ to, icon: Icon, title, subtitle, accent, delay = 0 }) {
 
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-white sm:text-base">{title}</h3>
-          <p className="mt-1 text-xs text-slate-300 sm:text-sm">{subtitle}</p>
+          <div className="mt-1 text-xs text-slate-300 sm:text-sm">{subtitle}</div>
         </div>
 
         <ChevronRight
@@ -404,7 +414,30 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            <div className="mt-7 grid items-center gap-6 border-t border-white/10 pt-6 sm:grid-cols-[auto_1fr]">
+            {loading && (
+              <div className="mt-7 grid items-center gap-6 border-t border-white/10 pt-6 sm:grid-cols-[auto_1fr]" aria-busy="true">
+                <Skeleton className="mx-auto h-36 w-36 !rounded-full" />
+                <div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[1, 2].map(n => (
+                      <div key={n} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="mt-4 h-8 w-14" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5">
+                    <div className="mb-2 flex justify-between">
+                      <Skeleton className="h-3 w-36" />
+                      <Skeleton className="h-3 w-8" />
+                    </div>
+                    <Skeleton className="h-2.5 w-full !rounded-full" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className={`mt-7 grid items-center gap-6 border-t border-white/10 pt-6 sm:grid-cols-[auto_1fr] ${loading ? 'hidden' : ''}`}>
 
               {/* score ring */}
               <div className="relative mx-auto h-36 w-36">
@@ -513,11 +546,17 @@ export default function Dashboard() {
 
           {loading ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {[1, 2].map((item) => (
+              {[1, 2, 3, 4].map((item) => (
                 <div
                   key={item}
-                  className="h-24 animate-pulse rounded-2xl border border-white/10 bg-white/[0.04]"
-                />
+                  className={`${glass} flex items-center gap-4 rounded-2xl p-4`}
+                >
+                  <Skeleton className="h-12 w-12 shrink-0 !rounded-xl" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="mt-2.5 h-3 w-1/3" />
+                  </div>
+                </div>
               ))}
             </div>
           ) : subjects.length > 0 ? (
@@ -608,7 +647,7 @@ export default function Dashboard() {
               to="/notes"
               icon={FileText}
               title="Study Notes"
-              subtitle={loading ? 'Loading...' : `${stats.notes} saved notes`}
+              subtitle={loading ? <Skeleton className="mt-2 h-3 w-24" /> : `${stats.notes} saved notes`}
               accent={ACCENTS.cyan}
               delay={0}
             />
@@ -617,7 +656,7 @@ export default function Dashboard() {
               to="/flashcards"
               icon={Layers}
               title="Flashcards"
-              subtitle={loading ? 'Loading...' : `${stats.cards} saved flashcards`}
+              subtitle={loading ? <Skeleton className="mt-2 h-3 w-28" /> : `${stats.cards} saved flashcards`}
               accent={ACCENTS.violet}
               delay={70}
             />
@@ -626,7 +665,7 @@ export default function Dashboard() {
               to="/quizzes"
               icon={ClipboardList}
               title="Quizzes"
-              subtitle={loading ? 'Loading...' : `${stats.quizzes} saved quizzes`}
+              subtitle={loading ? <Skeleton className="mt-2 h-3 w-24" /> : `${stats.quizzes} saved quizzes`}
               accent={ACCENTS.amber}
               delay={140}
             />
