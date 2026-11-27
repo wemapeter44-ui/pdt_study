@@ -519,8 +519,8 @@ export default function Notes() {
 
       {/* EDITOR */}
       {showEditor && (
-        <div className="nt-fade fixed inset-0 z-50 flex items-center justify-center bg-[#02050B]/80 p-0 backdrop-blur-md sm:p-5">
-          <div className="nt-pop flex h-full w-full max-w-4xl flex-col overflow-hidden bg-[#0B1220]/95 shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:h-[90vh] sm:rounded-3xl sm:border sm:border-white/10">
+        <div className="nt-fade fixed inset-0 z-[100] flex items-center justify-center bg-[#02050B]/90 p-0 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:p-5">
+          <div className="nt-pop flex h-[100dvh] max-h-[100dvh] w-full max-w-4xl flex-col overflow-hidden bg-[#0B1220]/95 shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:h-[90vh] sm:max-h-[90vh] sm:rounded-3xl sm:border sm:border-white/10">
 
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4 sm:px-6">
               <div className="flex items-center gap-3">
@@ -600,7 +600,7 @@ export default function Notes() {
               </select>
             </div>
 
-            <div className="nt-scroll flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-7">
+            <div className="nt-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 pb-8 sm:px-8 sm:py-7">
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
@@ -623,7 +623,7 @@ export default function Notes() {
               </div>
             )}
 
-            <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-black/20 px-4 py-4 sm:px-6">
+            <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-[#0B1220] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
               <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-300">
                 {wordCount} {wordCount === 1 ? 'word' : 'words'}
               </span>
