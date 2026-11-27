@@ -1,6 +1,8 @@
 ﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 import { supabase } from '../lib/supabase';
 import { generateChatResponse } from '../lib/ai-router';
 import ChatHistory from '../components/ChatHistory';
@@ -116,6 +118,8 @@ const MARKDOWN_STYLES = [
 
 export default function Tutor() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
 
   const [messages, setMessages] = useState([]);
@@ -356,9 +360,13 @@ export default function Tutor() {
   }
 
   async function deleteConversation(id) {
-    const confirmed = window.confirm(
-      'Delete this conversation? This action cannot be undone.'
-    );
+    const confirmed = await confirm({
+      title: 'Delete conversation?',
+      message: 'Delete this conversation? This action cannot be undone.',
+      confirmText: 'Delete conversation',
+      cancelText: 'Keep conversation',
+      danger: true
+    });
 
     if (!confirmed || loading) return;
 

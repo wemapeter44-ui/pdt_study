@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   Search,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../components/ConfirmProvider';
 
 /* ---------- local styles (self-contained, no extra files needed) ---------- */
 // Colours use exact hex values so they work even if the Tailwind cyan palette is customised.
@@ -119,6 +120,7 @@ function NoteSkeleton() {
 
 export default function Notes() {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
 
   const [notes, setNotes] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -279,9 +281,13 @@ export default function Notes() {
   async function deleteNote() {
     if (!selectedNote) return;
 
-    const confirmed = window.confirm(
-      'Are you sure you want to delete this note?'
-    );
+    const confirmed = await confirm({
+      title: 'Delete note?',
+      message: 'Are you sure you want to delete this note?',
+      confirmText: 'Delete note',
+      cancelText: 'Keep note',
+      danger: true
+    });
 
     if (!confirmed) return;
 
@@ -577,7 +583,7 @@ export default function Notes() {
                 }}
                 className={inputStyle}
               >
-                <option className={optionClass} value="">General note — no subject</option>
+                <option className={optionClass} value="">General note â€” no subject</option>
                 {subjects.map((subject) => (
                   <option className={optionClass} key={subject.id} value={subject.id}>
                     {subject.name}

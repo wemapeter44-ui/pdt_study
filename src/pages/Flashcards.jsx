@@ -1,4 +1,4 @@
-
+﻿
 import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Search, Layers, BookOpen, Trash2, Pencil,
@@ -7,9 +7,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../components/ConfirmProvider';
 
 export default function Flashcards() {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
 
   const [cards, setCards] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -157,7 +159,14 @@ export default function Flashcards() {
   }
 
   async function deleteCard(card) {
-    if (!window.confirm('Delete this flashcard?')) return;
+    const confirmed = await confirm({
+      title: 'Delete flashcard?',
+      message: 'Are you sure you want to delete this flashcard?',
+      confirmText: 'Delete flashcard',
+      cancelText: 'Keep flashcard',
+      danger: true
+    });
+    if (!confirmed) return;
 
     const { error: deleteError } = await supabase
       .from('study_flashcards')
@@ -355,7 +364,7 @@ export default function Flashcards() {
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <BookOpen size={13} />
                   {getSubjectName(card.subject_id)}
-                  {card.topic_id && ` · ${getTopicName(card.topic_id)}`}
+                  {card.topic_id && ` Â· ${getTopicName(card.topic_id)}`}
                 </div>
               </div>
             </div>
@@ -424,7 +433,7 @@ export default function Flashcards() {
                   }}
                   className="h-11 rounded-lg border border-[#263244] bg-[#111B2B] px-3 text-sm text-slate-300 outline-none"
                 >
-                  <option value="">General — no subject</option>
+                  <option value="">General â€” no subject</option>
                   {subjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
                       {subject.name}
@@ -547,3 +556,4 @@ export default function Flashcards() {
     </div>
   );
 }
+

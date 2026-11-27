@@ -430,7 +430,7 @@ export default function Quizzes() {
       .eq('id', quiz.id)
       .eq('user_id', user.id);
 
-    if (error) return alert(error.message);
+    if (error) return toast(error.message, 'error');
     await loadData();
   }
 
@@ -442,7 +442,7 @@ export default function Quizzes() {
       .eq('user_id', user.id)
       .order('created_at');
 
-    if (error) return alert(error.message);
+    if (error) return toast(error.message, 'error');
     if (!data?.length) { toast('This quiz has no questions yet.', 'error'); return; }
 
     setActiveQuiz(quiz);
@@ -478,7 +478,7 @@ export default function Quizzes() {
       .select()
       .single();
 
-    if (error) return alert(error.message);
+    if (error) return toast(error.message, 'error');
 
     setResult(data);
     setFinished(true);

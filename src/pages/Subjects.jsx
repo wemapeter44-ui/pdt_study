@@ -1,6 +1,8 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 import {
   Plus,
   Book,
@@ -90,6 +92,8 @@ function Skeleton({ className = '' }) {
 
 export default function Subjects() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -169,9 +173,13 @@ export default function Subjects() {
 
     if (!subject || deleting) return;
 
-    const confirmed = window.confirm(
-      `Delete "${subject.name}"? This action cannot be undone.`
-    );
+    const confirmed = await confirm({
+      title: 'Delete subject?',
+      message: `Delete "${subject.name}"? This action cannot be undone.`,
+      confirmText: 'Delete subject',
+      cancelText: 'Keep subject',
+      danger: true
+    });
 
     if (!confirmed) return;
 

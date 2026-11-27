@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft, BookOpen, Plus, Trash2, Loader2,
@@ -7,6 +7,8 @@ import {
 
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 
 /* ---------- local styles (self-contained, no extra files needed) ---------- */
 // Colours use exact hex values so they work even if the Tailwind cyan palette is customised.
@@ -97,6 +99,8 @@ function BackLink() {
 export default function SubjectDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   const [subject, setSubject] = useState(null);
   const [topics, setTopics] = useState([]);
@@ -177,7 +181,14 @@ export default function SubjectDetail() {
   }
 
   async function handleDeleteTopic(topicId) {
-    if (!window.confirm('Delete this topic?')) return;
+    const confirmed = await confirm({
+      title: 'Delete topic?',
+      message: 'Are you sure you want to delete this topic?',
+      confirmText: 'Delete topic',
+      cancelText: 'Keep topic',
+      danger: true
+    });
+    if (!confirmed) return;
 
     setDeleting(topicId);
     setError('');
