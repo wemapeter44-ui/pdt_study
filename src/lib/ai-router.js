@@ -22,9 +22,9 @@ const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // Optional overrides in .env:
 //   VITE_AI_MODEL=nvidia/nemotron-3.5-super-vl:free
 //   VITE_AI_FALLBACK_MODELS=openrouter/free,another/model:free
-const PRIMARY_MODEL = import.meta.env.VITE_AI_MODEL || 'nvidia/nemotron-3.5-super-vl:free';
+const PRIMARY_MODEL = import.meta.env.VITE_AI_MODEL || 'openrouter/free';
 
-const EXTRA_MODELS = (import.meta.env.VITE_AI_FALLBACK_MODELS || 'openrouter/free')
+const EXTRA_MODELS = (import.meta.env.VITE_AI_FALLBACK_MODELS || 'nvidia/nemotron-3.5-super-vl:free,openrouter/free')
   .split(',')
   .map((model) => model.trim())
   .filter(Boolean);
@@ -206,10 +206,36 @@ async function callModel({ model, messages, temperature, maxTokens, timeoutMs, j
       });
     }
 
-    const content = stripThinking(data?.choices?.[0]?.message?.content);
+    const message = data?.choices?.[0]?.message;
+    let rawContent = message?.content;
+
+    // Some providers return content as an array of text blocks.
+    if (Array.isArray(rawContent)) {
+      rawContent = rawContent
+        .map((part) => {
+          if (typeof part === 'string') return part;
+          if (typeof part?.text === 'string') return part.text;
+          return '';
+        })
+        .join('\n');
+    }
+
+    const content = stripThinking(
+      typeof rawContent === 'string' ? rawContent : ''
+    );
 
     if (!content) {
-      throw new AIError('The AI returned an empty response.', { status: 200 });
+      console.warn('AI returned no usable text:', {
+        model,
+        finishReason: data?.choices?.[0]?.finish_reason,
+        hasReasoning: Boolean(message?.reasoning),
+        usage: data?.usage
+      });
+
+      throw new AIError(
+        'The selected AI model returned no usable text. Trying another model.',
+        { status: 200 }
+      );
     }
 
     return content;
