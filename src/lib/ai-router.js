@@ -466,7 +466,7 @@ function shuffled(list) {
 
 // Returns a clean question, or null if the AI's question is unusable
 function normalizeQuestion(q, isTrueFalse) {
-  if (!q || typeof q.question !== 'string' || !q.question.trim() || !Array.isArray(q.options)) {
+  if (!q || typeof q.question !== 'string' || !q.question.trim()) {
     return null;
   }
 
@@ -475,73 +475,82 @@ function normalizeQuestion(q, isTrueFalse) {
   const raw = q.correctAnswer ?? q.correct_answer ?? q.answer;
 
   if (isTrueFalse) {
-    const text = String(raw ?? '').trim().toLowerCase();
-    const correctAnswer = text.startsWith('true') ? 'True' : text.startsWith('false') ? 'False' : null;
+    const answer = String(raw ?? '').trim().toLowerCase();
+    let correctAnswer = null;
+
+    if (/^(true|t|yes)\b/.test(answer)) correctAnswer = 'True';
+    if (/^(false|f|no)\b/.test(answer)) correctAnswer = 'False';
 
     if (!correctAnswer) return null;
 
-    return { question, options: ['True', 'False'], correctAnswer, explanation };
+    return {
+      question,
+      options: ['True', 'False'],
+      correctAnswer,
+      explanation
+    };
   }
 
-  let options = q.options.map((option) => String(option ?? '').trim()).filter(Boolean);
+  if (!Array.isArray(q.options)) return null;
 
-  if (options.length < 2) return null;
+  const originalOptions = q.options
+    .map((option) => String(option ?? '').trim())
+    .filter(Boolean);
 
-  const prefix = /^[A-Da-d][).:]\s+/;
-  const prefixed = options.every((option) => prefix.test(option));
+  if (originalOptions.length < 2) return null;
 
-  // Work out which option is correct (text, index or letter)
+  const prefix = /^[A-Da-d][).:]\s*/;
+  const options = originalOptions.map((option) => option.replace(prefix, '').trim());
+
   let correct = null;
 
-  if (typeof raw === 'number') {
-    correct = options[raw];
+  if (typeof raw === 'number' && Number.isInteger(raw)) {
+    correct = options[raw] ?? options[raw - 1] ?? null;
   } else if (typeof raw === 'string') {
-    const text = raw.trim();
-    const letter = text.match(/^([A-Da-d])(?:[).:]|$)/);
+    const answer = raw.trim();
+    const letter = answer.match(/^([A-Da-d])(?:[).:]|$)/);
 
-    if (/^\d+$/.test(text)) {
-      correct = options[Number(text)];
-    } else if (options.includes(text)) {
-      correct = text;
-    } else if (letter && (text.length === 1 || prefixed)) {
-      correct = options[letter[1].toLowerCase().charCodeAt(0) - 97];
+    if (letter && (answer.length === 1 || originalOptions.some((option) => prefix.test(option)))) {
+      const index = letter[1].toLowerCase().charCodeAt(0) - 97;
+      correct = options[index] ?? null;
     } else {
-      correct = options.find((option) => option.toLowerCase() === text.toLowerCase());
+      const cleanedAnswer = answer.replace(prefix, '').trim();
+
+      correct = options.find(
+        (option) => option.toLowerCase() === cleanedAnswer.toLowerCase()
+      ) || null;
     }
   }
 
   if (!correct) return null;
 
-  if (prefixed) {
-    options = options.map((option) => option.replace(prefix, ''));
-    correct = correct.replace(prefix, '');
+  const uniqueOptions = [];
+  const seenOptions = new Set();
+
+  for (const option of options) {
+    const key = option.toLowerCase();
+
+    if (!key || seenOptions.has(key)) continue;
+
+    seenOptions.add(key);
+    uniqueOptions.push(option);
   }
 
-  // Remove duplicate options
-  const seen = new Set();
-  options = options.filter((option) => {
-    const key = option.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  if (uniqueOptions.length < 2 || !uniqueOptions.includes(correct)) {
+    return null;
+  }
 
-  if (options.length < 2 || !options.includes(correct)) return null;
-
-  // Shuffle so the right answer is not always in the same place,
-  // except when options refer to each other ("All of the above", "Both A and B")
-  const dependsOnOrder = options.some((option) =>
+  const dependsOnOrder = uniqueOptions.some((option) =>
     /\b(all|none) of the above\b|\bboth [a-d]\b|\b[a-d] and [a-d]\b/i.test(option)
   );
 
   return {
     question,
-    options: dependsOnOrder ? options : shuffled(options),
+    options: dependsOnOrder ? uniqueOptions : shuffled(uniqueOptions),
     correctAnswer: correct,
     explanation
   };
 }
-
 function splitCount(count) {
   const parts = Math.max(1, Math.ceil(count / 7));
   const base = Math.floor(count / parts);
@@ -600,81 +609,122 @@ export async function generateQuiz({
   const student = await withTimeout(getStudentContext(), 800, {});
   const levelLabel = LEVELS[student.education_level]?.short || 'secondary or tertiary';
 
-  // Several smaller requests run at the same time, so the quiz finishes much sooner
   const sizes = splitCount(count);
-  const parts = sizes.length;
-
-  const settled = await Promise.allSettled(
-    sizes.map((size, partIndex) => {
-      // ask for one extra when split, to cover any duplicates that get removed
-      const n = parts > 1 ? size + 1 : size;
-
-      return askAI({
-        retries: 2,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a quiz writer for PDT Study, a learning app for Kenyan students. Reply with a single valid JSON object and nothing else.'
-          },
-          {
-            role: 'user',
-            content: buildQuizPrompt({
-              n,
-              partIndex,
-              parts,
-              topic: topic.trim(),
-              subject,
-              difficulty,
-              isTrueFalse,
-              levelLabel
-            })
-          }
-        ],
-        temperature: 0.3,
-        maxTokens: Math.min(4000, n * 220 + 300),
-        timeoutMs: QUIZ_TIMEOUT_MS,
-        json: true,
-        parse: parseQuizPart,
-        timeoutMessage: 'Quiz generation took too long. Please try again.'
-      });
-    })
-  );
-
-  const succeeded = settled.filter((result) => result.status === 'fulfilled').map((result) => result.value);
-
-  if (succeeded.length === 0) {
-    throw settled[0].reason;
-  }
-
-  const seen = new Set();
   const questions = [];
+  const seen = new Set();
+  let title = '';
+  let lastError = null;
 
-  for (const quiz of succeeded) {
-    for (const raw of quiz.questions) {
-      const question = normalizeQuestion(raw, isTrueFalse);
-      if (!question) continue;
+  for (let partIndex = 0; partIndex < sizes.length; partIndex++) {
+    const target = sizes[partIndex];
+    let batchCount = 0;
+    let attempts = 0;
 
-      const key = question.question.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-      if (seen.has(key)) continue;
+    // Retry incomplete batches instead of silently accepting too few questions.
+    while (batchCount < target && attempts < 3) {
+      attempts++;
 
-      seen.add(key);
-      questions.push(question);
+      const missing = target - batchCount;
+      const requested = missing + 2;
+
+      const prompt = buildQuizPrompt({
+        n: requested,
+        partIndex,
+        parts: sizes.length,
+        topic: topic.trim(),
+        subject,
+        difficulty,
+        isTrueFalse,
+        levelLabel
+      });
+
+      const exclusions = questions
+        .map((question) => question.question)
+        .slice(-20);
+
+      const fullPrompt = exclusions.length
+        ? prompt + '\n\nIMPORTANT: Do not repeat or paraphrase these existing questions:\n' +
+          JSON.stringify(exclusions)
+        : prompt;
+
+      try {
+        const quiz = await askAI({
+          retries: 2,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are a careful quiz writer for PDT Study. Return exactly the requested number of complete, distinct questions in one valid JSON object. Never omit correct answers or required options.'
+            },
+            {
+              role: 'user',
+              content: fullPrompt
+            }
+          ],
+          temperature: 0.25,
+          maxTokens: Math.min(5000, requested * 250 + 400),
+          timeoutMs: QUIZ_TIMEOUT_MS,
+          json: true,
+          parse: parseQuizPart,
+          timeoutMessage: 'Quiz generation took too long. Please try again.'
+        });
+
+        if (!title && quiz.title) {
+          title = tidy(quiz.title, 80);
+        }
+
+        for (const raw of quiz.questions) {
+          const question = normalizeQuestion(raw, isTrueFalse);
+          if (!question) continue;
+
+          const key = question.question
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+
+          if (!key || seen.has(key)) continue;
+
+          seen.add(key);
+          questions.push(question);
+          batchCount++;
+
+          if (batchCount >= target) break;
+        }
+      } catch (error) {
+        lastError = error;
+        console.warn(
+          'Quiz batch attempt ' + attempts + ' failed:',
+          error?.message || error
+        );
+      }
+    }
+
+    if (batchCount < target) {
+      const remaining = count - questions.length;
+
+      console.error('Quiz generation incomplete:', {
+        requested: count,
+        generated: questions.length,
+        remaining
+      });
+
+      throw new Error(
+        'The AI generated ' + questions.length + ' valid questions out of ' +
+        count + '. Please try generating the quiz again.' +
+        (lastError ? ' Last issue: ' + lastError.message : '')
+      );
     }
   }
 
-  const minimum = Math.max(1, Math.ceil(count * 0.6));
-
-  if (questions.length < minimum) {
-    throw new Error('The AI returned too few valid questions. Please try again.');
+  if (questions.length !== count) {
+    throw new Error(
+      'Could not complete all ' + count +
+      ' questions. Please try generating the quiz again.'
+    );
   }
 
-  const title = succeeded
-    .map((quiz) => tidy(quiz.title, 80))
-    .find(Boolean);
-
   return {
-    title: title || `${topic.trim()} Quiz`,
+    title: title || (topic.trim() + ' Quiz'),
     questions: questions.slice(0, count)
   };
 }
