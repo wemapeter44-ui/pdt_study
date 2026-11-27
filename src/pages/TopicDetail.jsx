@@ -219,7 +219,12 @@ export default function TopicDetail() {
 
       if (saveUserError) throw saveUserError;
 
-      const response = await generateChatResponse(updatedMessages);
+      // Context keeps answers on this topic; this page shows plain text, so ask for no Markdown
+      const response = await generateChatResponse(updatedMessages, 2, {
+        topic: topic.name,
+        subject: subject?.name,
+        format: 'plain'
+      });
 
       const { data: savedAssistantMessage, error: saveAssistantError } =
         await supabase
