@@ -22,9 +22,9 @@ const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // Optional overrides in .env:
 //   VITE_AI_MODEL=nvidia/nemotron-3.5-super-vl:free
 //   VITE_AI_FALLBACK_MODELS=openrouter/free,another/model:free
-const PRIMARY_MODEL = import.meta.env.VITE_AI_MODEL || 'openrouter/free';
+const PRIMARY_MODEL = import.meta.env.VITE_AI_MODEL || 'nvidia/nemotron-3.5-super-vl:free';
 
-const EXTRA_MODELS = (import.meta.env.VITE_AI_FALLBACK_MODELS || 'nvidia/nemotron-3.5-super-vl:free,openrouter/free')
+const EXTRA_MODELS = (import.meta.env.VITE_AI_FALLBACK_MODELS || 'openrouter/free')
   .split(',')
   .map((model) => model.trim())
   .filter(Boolean);
