@@ -18,6 +18,7 @@ import {
 
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from '../components/BrandLogo';
+import { useToast } from '../components/ToastProvider';
 
 const NAV_GROUPS = [
   {
@@ -76,6 +77,7 @@ function initialsOf(name) {
 
 export default function AppLayout() {
   const { signOut, profile, user } = useAuth();
+  const { toast } = useToast();
   const location = useLocation();
 
   const [moreOpen, setMoreOpen] = useState(false);
@@ -172,7 +174,7 @@ export default function AppLayout() {
       await signOut();
     } catch (error) {
       console.error('Sign out error:', error);
-      alert('Unable to sign out. Please try again.');
+      toast('Unable to sign out. Please try again.', 'error');
     } finally {
       setSigningOut(false);
     }

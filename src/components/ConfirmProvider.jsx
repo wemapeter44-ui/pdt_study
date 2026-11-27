@@ -1,5 +1,4 @@
-
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+﻿import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
 const ConfirmContext = createContext(null);
@@ -18,7 +17,7 @@ export default function ConfirmProvider({ children }) {
   const [dialog, setDialog] = useState(null);
   const resolver = useRef(null);
 
-  const closeDialog = useCallback((result) => {
+  const close = useCallback((result) => {
     if (resolver.current) {
       resolver.current(result);
       resolver.current = null;
@@ -30,6 +29,7 @@ export default function ConfirmProvider({ children }) {
   const confirm = useCallback((options = {}) => {
     if (resolver.current) {
       resolver.current(false);
+      resolver.current = null;
     }
 
     return new Promise((resolve) => {
@@ -48,23 +48,18 @@ export default function ConfirmProvider({ children }) {
   useEffect(() => {
     if (!dialog) return;
 
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        closeDialog(false);
-      }
-    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') close(false);
+    };
 
     window.addEventListener('keydown', handleKeyDown);
 
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dialog, closeDialog]);
+  }, [dialog, close]);
 
   useEffect(() => {
     return () => {
-      if (resolver.current) {
-        resolver.current(false);
-        resolver.current = null;
-      }
+      if (resolver.current) resolver.current(false);
     };
   }, []);
 
@@ -75,32 +70,30 @@ export default function ConfirmProvider({ children }) {
       {dialog && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-          role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeDialog(false);
-            }
+            if (event.target === event.currentTarget) close(false);
           }}
+          role="presentation"
         >
           <section
             role="alertdialog"
             aria-modal="true"
-            aria-labelledby="confirm-title"
-            aria-describedby="confirm-message"
-            className="w-full max-w-md animate-[confirmIn_.2s_ease-out] rounded-2xl border border-white/10 bg-[#111B2B] p-5 shadow-2xl sm:p-6"
+            aria-labelledby="pdt-confirm-title"
+            aria-describedby="pdt-confirm-message"
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#111B2B] p-5 shadow-2xl shadow-black/50"
           >
-            <div className="mb-5 flex items-start justify-between">
+            <div className="mb-4 flex items-start justify-between">
               <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${
                 dialog.danger
                   ? 'bg-rose-500/10 text-rose-400'
                   : 'bg-[#22D3EE]/10 text-[#22D3EE]'
               }`}>
-                <AlertTriangle size={21} />
+                <AlertTriangle size={22} />
               </div>
 
               <button
                 type="button"
-                onClick={() => closeDialog(false)}
+                onClick={() => close(false)}
                 aria-label="Close confirmation"
                 className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
               >
@@ -109,34 +102,34 @@ export default function ConfirmProvider({ children }) {
             </div>
 
             <h2
-              id="confirm-title"
+              id="pdt-confirm-title"
               className="text-lg font-semibold text-white"
             >
               {dialog.title}
             </h2>
 
             <p
-              id="confirm-message"
+              id="pdt-confirm-message"
               className="mt-2 text-sm leading-6 text-slate-400"
             >
               {dialog.message}
             </p>
 
-            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <div className="mt-6 flex gap-3">
               <button
                 type="button"
-                onClick={() => closeDialog(false)}
-                className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+                onClick={() => close(false)}
+                className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
               >
                 {dialog.cancelText}
               </button>
 
               <button
                 type="button"
-                onClick={() => closeDialog(true)}
-                className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${
+                onClick={() => close(true)}
+                className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white transition ${
                   dialog.danger
-                    ? 'bg-rose-500 hover:bg-rose-400'
+                    ? 'bg-rose-600 hover:bg-rose-500'
                     : 'bg-[#0891B2] hover:bg-[#0E7490]'
                 }`}
               >
@@ -144,13 +137,6 @@ export default function ConfirmProvider({ children }) {
               </button>
             </div>
           </section>
-
-          <style>{`
-            @keyframes confirmIn {
-              from { opacity: 0; transform: translateY(8px) scale(.98); }
-              to { opacity: 1; transform: translateY(0) scale(1); }
-            }
-          `}</style>
         </div>
       )}
     </ConfirmContext.Provider>
