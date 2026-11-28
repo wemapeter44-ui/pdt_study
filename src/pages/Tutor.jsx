@@ -9,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { generateChatResponse } from '../lib/ai-router';
 import ChatHistory from '../components/ChatHistory';
+import { useConfirm } from '../context/ConfirmContext';
+import { useToast } from '../context/ToastContext';
 
 import {
   ArrowLeft, BookOpen, Menu, Plus, AlertCircle, X,
@@ -742,6 +744,8 @@ const SUGGESTIONS = [
 
 export default function Tutor() {
   const { user, profile } = useAuth();
+  const { confirm } = useConfirm();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [confirm, confirmDialog] = useConfirm();
 
@@ -801,7 +805,7 @@ export default function Tutor() {
       setConversationId(id);
       setIsSidebarOpen(false);
     } catch (err) {
-      setError(err.message || 'Unable to load this conversation.');
+      toast(err.message || 'Something went wrong.', 'error');
     } finally {
       setLoading(false);
     }
@@ -828,7 +832,7 @@ export default function Tutor() {
       await fetchConversations();
       setIsSidebarOpen(false);
     } catch (err) {
-      setError(err.message || 'Unable to start a new conversation.');
+      toast(err.message || 'Something went wrong.', 'error');
     } finally {
       setLoading(false);
     }
@@ -880,7 +884,7 @@ export default function Tutor() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.message || 'Unable to initialise the tutor.');
+          toast(err.message || 'Something went wrong.', 'error');
         }
       } finally {
         if (!cancelled) setInitializing(false);
@@ -1120,7 +1124,7 @@ export default function Tutor() {
       }
 
     } catch (err) {
-      setError(err.message || 'Unable to delete this conversation.');
+      toast(err.message || 'Something went wrong.', 'error');
     }
   }
 
