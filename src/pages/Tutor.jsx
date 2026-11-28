@@ -690,8 +690,8 @@ function ConfirmDialog({ dialog, onClose }) {
   );
 }
 
-// const [confirm, confirmDialog] = useConfirm();
-// ... render {confirmDialog} once in the component, then: if (await confirm({...})) { ... }
+// 
+// ... render  once in the component, then: if (await confirm({...})) { ... }
 const SUGGESTIONS = [
   {
     icon: Calculator,
@@ -720,7 +720,7 @@ export default function Tutor() {
   const { confirm } = useConfirm();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [confirm, confirmDialog] = useConfirm();
+  
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -1110,7 +1110,7 @@ export default function Tutor() {
     <div className="ck-root fixed inset-0 z-40 flex h-[100dvh] w-full overflow-hidden bg-[#060B16] text-slate-200">
       <ChatStyles />
       <ChatBackdrop />
-      {confirmDialog}
+      
 
       <ChatHistory
         conversations={conversations}
@@ -1245,4 +1245,5 @@ export default function Tutor() {
     </div>
   );
 }
+
 
