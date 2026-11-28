@@ -692,33 +692,6 @@ function ConfirmDialog({ dialog, onClose }) {
 
 // const [confirm, confirmDialog] = useConfirm();
 // ... render {confirmDialog} once in the component, then: if (await confirm({...})) { ... }
-function useConfirm() {
-  const [dialog, setDialog] = useState(null);
-  const resolver = useRef(null);
-
-  const close = useCallback((result) => {
-    const resolve = resolver.current;
-    resolver.current = null;
-    setDialog(null);
-    resolve?.(result);
-  }, []);
-
-  const confirm = useCallback((options) => {
-    return new Promise((resolve) => {
-      // A newer question replaces an unanswered older one (treated as "cancel")
-      resolver.current?.(false);
-      resolver.current = resolve;
-      setDialog(typeof options === 'string' ? { message: options } : options || {});
-    });
-  }, []);
-
-  const element = dialog
-    ? createPortal(<ConfirmDialog dialog={dialog} onClose={close} />, document.body)
-    : null;
-
-  return [confirm, element];
-}
-
 const SUGGESTIONS = [
   {
     icon: Calculator,
@@ -1272,3 +1245,4 @@ export default function Tutor() {
     </div>
   );
 }
+
