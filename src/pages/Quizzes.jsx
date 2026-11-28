@@ -2,8 +2,6 @@
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { generateQuiz } from '../lib/ai-router';
-import { useToast } from '../components/ToastProvider';
-import { useConfirm } from '../components/ConfirmProvider';
 import {
   Plus, Search, Trash2, Pencil, X, Check,
   Play, ArrowLeft, ChevronRight, ChevronLeft, Trophy,
@@ -96,8 +94,6 @@ function Shell({ children }) {
 
 export default function Quizzes() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const { confirm } = useConfirm();
 
   const [quizzes, setQuizzes] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -185,7 +181,7 @@ export default function Quizzes() {
     const selectedTopic = topics.find(t => t.id === aiTopicId);
     const selectedSubject = subjects.find(s => s.id === aiSubjectId);
 
-    if (!selectedTopic) { toast('Please select a topic.', 'error'); return; }
+    if (!selectedTopic) return alert('Please select a topic.');
 
     setGenerating(true);
     let createdQuizId = null;
@@ -257,7 +253,7 @@ export default function Quizzes() {
 
       setAiModal(false);
       await loadData();
-      toast('Your AI quiz has been generated successfully!', 'success');
+      alert('Your AI quiz has been generated successfully!');
 
     } catch (error) {
       console.error('Quiz generation error:', error);
@@ -272,7 +268,7 @@ export default function Quizzes() {
         if (cleanupError) console.error(cleanupError);
       }
 
-      toast(error.message || 'Could not generate your quiz.', 'error');
+      alert(error.message || 'Could not generate your quiz.');
     } finally {
       setGenerating(false);
     }
@@ -286,7 +282,7 @@ export default function Quizzes() {
       .eq('user_id', user.id)
       .order('created_at');
 
-    if (error) { toast(error.message, 'error'); return; }
+    if (error) return alert(error.message);
 
     setEditing(quiz);
     setTitle(quiz.title);
@@ -336,18 +332,18 @@ export default function Quizzes() {
   async function saveQuiz(e) {
     e.preventDefault();
 
-    if (!title.trim()) { toast('Enter a quiz title.', 'error'); return; }
+    if (!title.trim()) return alert('Enter a quiz title.');
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       const options = q.options.map(o => o.trim()).filter(Boolean);
 
-      if (!q.question.trim()) { toast(`Enter question ${i + 1}.`, 'error'); return; }
+      if (!q.question.trim()) return alert(`Enter question ${i + 1}.`);
       if (options.length < 2) {
-        toast(`Question ${i + 1} needs at least two options.`, 'error'); return;
+        return alert(`Question ${i + 1} needs at least two options.`);
       }
       if (!q.correct_answer || !options.includes(q.correct_answer)) {
-        toast(`Choose a correct answer for question ${i + 1}.`, 'error'); return;
+        return alert(`Choose a correct answer for question ${i + 1}.`);
       }
     }
 
@@ -414,15 +410,14 @@ export default function Quizzes() {
       await loadData();
 
     } catch (error) {
-      toast(error.message || 'Could not save quiz.', 'error');
+      alert(error.message || 'Could not save quiz.');
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteQuiz(quiz) {
-    const confirmed = await confirm({ title: 'Delete quiz?', message: `Delete "${quiz.title}" and its questions? This action cannot be undone.`, confirmText: 'Delete quiz', cancelText: 'Keep quiz', danger: true });
-    if (!confirmed) return;
+    if (!window.confirm(`Delete "${quiz.title}" and its questions?`)) return;
 
     const { error } = await supabase
       .from('study_quizzes')
@@ -430,7 +425,7 @@ export default function Quizzes() {
       .eq('id', quiz.id)
       .eq('user_id', user.id);
 
-    if (error) return toast(error.message, 'error');
+    if (error) return alert(error.message);
     await loadData();
   }
 
@@ -442,8 +437,8 @@ export default function Quizzes() {
       .eq('user_id', user.id)
       .order('created_at');
 
-    if (error) return toast(error.message, 'error');
-    if (!data?.length) { toast('This quiz has no questions yet.', 'error'); return; }
+    if (error) return alert(error.message);
+    if (!data?.length) return alert('This quiz has no questions yet.');
 
     setActiveQuiz(quiz);
     setQuizQuestions(data);
@@ -478,7 +473,7 @@ export default function Quizzes() {
       .select()
       .single();
 
-    if (error) return toast(error.message, 'error');
+    if (error) return alert(error.message);
 
     setResult(data);
     setFinished(true);

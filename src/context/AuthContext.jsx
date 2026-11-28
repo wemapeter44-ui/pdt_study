@@ -1,10 +1,10 @@
-﻿
-import {
+﻿import {
   createContext,
   useContext,
   useEffect,
   useState,
-  useCallback
+  useCallback,
+  useMemo
 } from 'react';
 
 import { supabase } from '../lib/supabase';
@@ -14,7 +14,14 @@ const AuthCtx = createContext(null);
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined);
   const [profile, setProfile] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Which user the current `profile` value belongs to (null = nobody / not fetched yet).
+  // This lets `loading` stay true from the moment a user signs in until THEIR profile
+  // has really been fetched, so guards never see "signed in, profile = null" for a frame
+  // and the skeleton never flashes away early.
+  const [profileUserId, setProfileUserId] = useState(null);
+
+  const userId = session?.user?.id ?? null;
 
   // Initialise authentication and listen for auth changes.
   useEffect(() => {
@@ -51,19 +58,17 @@ export function AuthProvider({ children }) {
     let cancelled = false;
 
     async function fetchProfile() {
-      if (!session?.user) {
+      if (!userId) {
         setProfile(null);
-        setProfileLoading(false);
+        setProfileUserId(null);
         return;
       }
-
-      setProfileLoading(true);
 
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', userId)
           .maybeSingle();
 
         if (error) throw error;
@@ -78,8 +83,9 @@ export function AuthProvider({ children }) {
           setProfile(null);
         }
       } finally {
+        // Done for this user, whether it worked or not
         if (!cancelled) {
-          setProfileLoading(false);
+          setProfileUserId(userId);
         }
       }
     }
@@ -89,7 +95,27 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id]);
+  }, [userId]);
+
+  // Re-read the profile after it is edited (for example in Settings),
+  // without showing the loading skeleton again.
+  const refreshProfile = useCallback(async () => {
+    if (!userId) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Profile refresh error:', error);
+      return null;
+    }
+
+    setProfile(data ?? null);
+    return data ?? null;
+  }, [userId]);
 
   // Sign out.
   const signOut = useCallback(async () => {
@@ -100,14 +126,20 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const value = {
-    session,
-    user: session?.user ?? null,
-    profile,
-    profileLoading,
-    loading: session === undefined || profileLoading,
-    signOut
-  };
+  const profileLoading = Boolean(userId) && profileUserId !== userId;
+
+  const value = useMemo(
+    () => ({
+      session,
+      user: session?.user ?? null,
+      profile,
+      profileLoading,
+      loading: session === undefined || profileLoading,
+      refreshProfile,
+      signOut
+    }),
+    [session, profile, profileLoading, refreshProfile, signOut]
+  );
 
   return (
     <AuthCtx.Provider value={value}>

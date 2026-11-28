@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { useConfirm } from '../components/ConfirmProvider';
 
 /* ---------- local styles (self-contained, no extra files needed) ---------- */
 // Colours use exact hex values so they work even if the Tailwind cyan palette is customised.
@@ -120,7 +119,6 @@ function NoteSkeleton() {
 
 export default function Notes() {
   const { user } = useAuth();
-  const { confirm } = useConfirm();
 
   const [notes, setNotes] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -281,13 +279,9 @@ export default function Notes() {
   async function deleteNote() {
     if (!selectedNote) return;
 
-    const confirmed = await confirm({
-      title: 'Delete note?',
-      message: 'Are you sure you want to delete this note?',
-      confirmText: 'Delete note',
-      cancelText: 'Keep note',
-      danger: true
-    });
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this note?'
+    );
 
     if (!confirmed) return;
 
@@ -482,7 +476,7 @@ export default function Notes() {
                   style={{ animationDelay: `${Math.min(i, 8) * 55}ms` }}
                   className={`nt-card nt-rise group relative min-h-[210px] rounded-2xl bg-gradient-to-br from-white/15 via-white/5 to-white/0 p-px text-left transition-all duration-300 hover:-translate-y-1 ${accent.edge}`}
                 >
-                  <div className={`nt-card-glow pointer-events-none absolute -inset-1 -z-10 rounded-3xl opacity-0 blur-2xl transition-opacity duration-300 ${accent.glow}`} />
+                  <div className={`nt-card-glow pointer-events-none absolute -inset-1 -z-10 rounded-3xl opacity-0 blur-2xl transition-opacity duration-300 ${accent.glow}`} style={{ opacity: 0 }} />
 
                   <div className={`${glass} flex h-full min-h-[208px] flex-col rounded-2xl p-5 transition-colors group-hover:bg-white/[0.07]`}>
                     <div className="mb-4 flex items-start justify-between">
@@ -525,8 +519,8 @@ export default function Notes() {
 
       {/* EDITOR */}
       {showEditor && (
-        <div className="nt-fade fixed inset-0 z-[100] flex items-center justify-center bg-[#02050B]/90 p-0 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:p-5">
-          <div className="nt-pop flex h-[100dvh] max-h-[100dvh] w-full max-w-4xl flex-col overflow-hidden bg-[#0B1220]/95 shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:h-[90vh] sm:max-h-[90vh] sm:rounded-3xl sm:border sm:border-white/10">
+        <div className="nt-fade fixed inset-0 z-50 flex items-center justify-center bg-[#02050B]/80 p-0 backdrop-blur-md sm:p-5">
+          <div className="nt-pop flex h-full w-full max-w-4xl flex-col overflow-hidden bg-[#0B1220]/95 shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:h-[90vh] sm:rounded-3xl sm:border sm:border-white/10">
 
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4 sm:px-6">
               <div className="flex items-center gap-3">
@@ -583,7 +577,7 @@ export default function Notes() {
                 }}
                 className={inputStyle}
               >
-                <option className={optionClass} value="">General note â€” no subject</option>
+                <option className={optionClass} value="">General note — no subject</option>
                 {subjects.map((subject) => (
                   <option className={optionClass} key={subject.id} value={subject.id}>
                     {subject.name}
@@ -606,7 +600,7 @@ export default function Notes() {
               </select>
             </div>
 
-            <div className="nt-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 pb-8 sm:px-8 sm:py-7">
+            <div className="nt-scroll flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-7">
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
@@ -629,7 +623,7 @@ export default function Notes() {
               </div>
             )}
 
-            <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-[#0B1220] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+            <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-black/20 px-4 py-4 sm:px-6">
               <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-300">
                 {wordCount} {wordCount === 1 ? 'word' : 'words'}
               </span>

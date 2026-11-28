@@ -1,14 +1,196 @@
-﻿import { useEffect, useState } from 'react';
+﻿import {
+  useEffect, useState, useRef, useCallback
+} from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, BookOpen, Plus, Trash2, Loader2,
-  AlertCircle, X, ChevronRight
+  ArrowLeft, BookOpen, Plus, Trash2, Loader2, AlertCircle,
+  X, ChevronRight, CheckCircle2, Info
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/ToastProvider';
-import { useConfirm } from '../components/ConfirmProvider';
+
+/* ---------- confirm dialog (built into this file) ---------- */
+
+const confirmStyles = `
+@keyframes cd-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cd-pop { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes cd-sheet { from { transform: translateY(100%); } to { transform: none; } }
+.cd-fade { animation: cd-fade .2s ease both; }
+.cd-pop { animation: cd-pop .22s cubic-bezier(.2,.8,.2,1) both; }
+@media (max-width: 639px) { .cd-pop { animation-name: cd-sheet; animation-duration: .3s; } }
+@media (prefers-reduced-motion: reduce) { .cd-fade, .cd-pop { animation: none !important; } }
+`;
+
+// confirm({ title, message, confirmText, cancelText, tone: 'default' | 'danger' | 'success', hideCancel })
+// resolves to true when the confirm button is pressed, false otherwise.
+function ConfirmDialog({ dialog, onClose }) {
+  const {
+    title = 'Are you sure?',
+    message,
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
+    tone = 'default',
+    hideCancel = false
+  } = dialog;
+
+  const danger = tone === 'danger';
+  const success = tone === 'success';
+  const cancelRef = useRef(null);
+  const confirmRef = useRef(null);
+
+  useEffect(() => {
+    const previous = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    // For destructive actions the safe button gets focus first
+    (danger && !hideCancel ? cancelRef : confirmRef).current?.focus();
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose(false);
+        return;
+      }
+
+      if (event.key === 'Tab') {
+        const order = [cancelRef.current, confirmRef.current].filter(Boolean);
+        if (!order.length) return;
+
+        event.preventDefault();
+
+        const index = order.indexOf(document.activeElement);
+        const next = event.shiftKey
+          ? (index <= 0 ? order.length - 1 : index - 1)
+          : (index === order.length - 1 ? 0 : index + 1);
+
+        order[next].focus();
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previous?.focus?.();
+    };
+  }, [danger, hideCancel, onClose]);
+
+  const Icon = danger ? AlertCircle : success ? CheckCircle2 : Info;
+
+  const iconStyle = danger
+    ? 'border-rose-400/30 bg-rose-500/15 text-rose-300'
+    : success
+      ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300'
+      : 'border-[#22D3EE]/30 bg-[#22D3EE]/15 text-[#67E8F9]';
+
+  const glowStyle = danger ? 'bg-rose-500/40' : success ? 'bg-emerald-500/40' : 'bg-[#22D3EE]/40';
+
+  const confirmStyle = danger
+    ? 'bg-gradient-to-r from-rose-500 to-orange-500 shadow-rose-500/25 hover:shadow-rose-500/40'
+    : success
+      ? 'bg-gradient-to-r from-emerald-400 to-cyan-500 shadow-emerald-500/25 hover:shadow-emerald-500/40'
+      : 'bg-gradient-to-r from-[#22D3EE] via-sky-500 to-violet-500 shadow-[#22D3EE]/25 hover:shadow-[#22D3EE]/40';
+
+  return (
+    <div
+      className="cd-fade fixed inset-0 z-[100] flex items-end justify-center bg-[#02050B]/75 backdrop-blur-sm sm:items-center sm:p-4"
+      style={{ fontFamily: "'Outfit', ui-sans-serif, system-ui, sans-serif" }}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose(false);
+      }}
+    >
+      <style>{confirmStyles}</style>
+
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="cd-title"
+        aria-describedby={message ? 'cd-message' : undefined}
+        className="cd-pop w-full max-w-md rounded-t-3xl bg-gradient-to-br from-white/20 via-white/5 to-white/0 p-px sm:rounded-3xl"
+      >
+        <div className="rounded-t-3xl bg-[#0B1220] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:rounded-3xl sm:p-7">
+          <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
+
+          <div className="flex items-start gap-4">
+            <div className="relative shrink-0">
+              <div className={`absolute inset-0 rounded-2xl blur-lg ${glowStyle}`} />
+              <div className={`relative flex h-12 w-12 items-center justify-center rounded-2xl border ${iconStyle}`}>
+                <Icon size={22} />
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h2 id="cd-title" className="text-lg font-bold text-white">
+                {title}
+              </h2>
+
+              {message && (
+                <p id="cd-message" className="mt-1.5 text-sm leading-6 text-slate-300">
+                  {message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className={`mt-7 grid gap-3 ${hideCancel ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            {!hideCancel && (
+              <button
+                ref={cancelRef}
+                type="button"
+                onClick={() => onClose(false)}
+                className="rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-slate-200 outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-[#22D3EE]"
+              >
+                {cancelText}
+              </button>
+            )}
+
+            <button
+              ref={confirmRef}
+              type="button"
+              onClick={() => onClose(true)}
+              className={`rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg outline-none transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/70 active:translate-y-0 ${confirmStyle}`}
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// const [confirm, confirmDialog] = useConfirm();
+// ... render {confirmDialog} once in the component, then: if (await confirm({...})) { ... }
+function useConfirm() {
+  const [dialog, setDialog] = useState(null);
+  const resolver = useRef(null);
+
+  const close = useCallback((result) => {
+    const resolve = resolver.current;
+    resolver.current = null;
+    setDialog(null);
+    resolve?.(result);
+  }, []);
+
+  const confirm = useCallback((options) => {
+    return new Promise((resolve) => {
+      // A newer question replaces an unanswered older one (treated as "cancel")
+      resolver.current?.(false);
+      resolver.current = resolve;
+      setDialog(typeof options === 'string' ? { message: options } : options || {});
+    });
+  }, []);
+
+  const element = dialog
+    ? createPortal(<ConfirmDialog dialog={dialog} onClose={close} />, document.body)
+    : null;
+
+  return [confirm, element];
+}
 
 /* ---------- local styles (self-contained, no extra files needed) ---------- */
 // Colours use exact hex values so they work even if the Tailwind cyan palette is customised.
@@ -99,8 +281,7 @@ function BackLink() {
 export default function SubjectDetail() {
   const { id } = useParams();
   const { user } = useAuth();
-  const { toast } = useToast();
-  const { confirm } = useConfirm();
+  const [confirm, confirmDialog] = useConfirm();
 
   const [subject, setSubject] = useState(null);
   const [topics, setTopics] = useState([]);
@@ -182,12 +363,12 @@ export default function SubjectDetail() {
 
   async function handleDeleteTopic(topicId) {
     const confirmed = await confirm({
-      title: 'Delete topic?',
-      message: 'Are you sure you want to delete this topic?',
+      title: 'Delete this topic?',
+      message: 'The topic will be removed from this subject. This cannot be undone.',
       confirmText: 'Delete topic',
-      cancelText: 'Keep topic',
-      danger: true
+      tone: 'danger'
     });
+
     if (!confirmed) return;
 
     setDeleting(topicId);
@@ -271,6 +452,7 @@ export default function SubjectDetail() {
 
   return (
     <Shell>
+      {confirmDialog}
       <div className="sd-rise">
         <BackLink />
       </div>

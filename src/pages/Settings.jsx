@@ -111,7 +111,7 @@ function Section({ icon: Icon, title, subtitle, tint, delay = 0, children }) {
 }
 
 export default function Settings() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
 
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState({ type: '', message: '' });
@@ -172,6 +172,9 @@ export default function Settings() {
         type: 'success',
         message: 'Your profile has been updated.',
       });
+
+      // Keep the rest of the app (greeting, tutor, sidebar) in sync
+      if (refreshProfile) await refreshProfile();
     } catch (error) {
       setStatus({
         type: 'error',
