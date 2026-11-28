@@ -13,6 +13,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useConfirm } from '../context/ConfirmContext';
+import { useToast } from '../context/ToastContext';
 
 const COLORS = [
   '#64748B',
@@ -90,6 +92,8 @@ function Skeleton({ className = '' }) {
 
 export default function Subjects() {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
+  const { toast } = useToast();
 
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +125,7 @@ export default function Subjects() {
 
       setSubjects(data || []);
     } catch (err) {
-      setError(err.message || 'Unable to load your subjects.');
+      toast(err.message || 'Unable to load subjects.', 'error');
     } finally {
       setLoading(false);
     }
@@ -156,9 +160,9 @@ export default function Subjects() {
       setSubjects(current => [...current, data]);
       setNewSubject(EMPTY_SUBJECT);
       setIsAdding(false);
-      setSuccess('Subject created successfully.');
+      toast('Subject created successfully.', 'success');
     } catch (err) {
-      setError(err.message || 'Unable to create subject.');
+      toast(err.message || 'Unable to create subject.', 'error');
     } finally {
       setSaving(false);
     }
@@ -189,9 +193,9 @@ export default function Subjects() {
       if (error) throw error;
 
       setSubjects(current => current.filter(item => item.id !== id));
-      setSuccess('Subject deleted successfully.');
+      toast('Subject deleted successfully.', 'success');
     } catch (err) {
-      setError(err.message || 'Unable to delete subject.');
+      toast(err.message || 'Unable to delete subject.', 'error');
     } finally {
       setDeleting(null);
     }
