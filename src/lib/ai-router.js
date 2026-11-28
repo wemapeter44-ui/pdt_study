@@ -30,14 +30,6 @@ function statusMessage(status) {
 /* Context Fetching                                                    */
 /* ------------------------------------------------------------------ */
 
-const LEVELS = {
-  cbc: { label: 'CBC', guide: 'Use simple words and practical examples.' },
-  kcse: { label: 'KCSE', guide: 'Pitch answers for secondary school. Show working.' },
-  university: { label: 'University', guide: 'Use university level terminology.' },
-  college: { label: 'College', guide: 'Use practical diploma level depth.' },
-  tvet: { label: 'TVET', guide: 'Focus on practical, hands-on skills.' }
-};
-
 async function getStudentContext() {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -108,13 +100,21 @@ function cleanMessages(messages) {
     .slice(-12);
 }
 
+// FIXED: Professional prompt that understands the app context
 function buildTutorPrompt(student = {}) {
-  const level = LEVELS[student.education_level];
   return [
-    'You are PDT Study Tutor. Answer directly. No introductions, no emojis. Be concise.',
-    'Use Markdown. No LaTeX.',
-    level ? `Student level: ${level.label}. ${level.guide}` : '',
-    student.institution ? `Institution: ${student.institution}` : ''
+    'You are the PDT Study Tutor, a professional AI tutor inside the PDT Study app.',
+    'PDT Study is a study platform for students. You help them understand concepts, solve problems, and prepare for exams.',
+    'RULES:',
+    '1. Answer directly. No introductions, no emojis, no filler.',
+    '2. Use clear, academic language. Format with Markdown.',
+    '3. Do not use LaTeX. Write maths in plain text (e.g., x^2).',
+    '4. Never assume the user\'s curriculum or class level unless they explicitly tell you.',
+    '5. If the user asks about a topic, explain it step-by-step. Use practical examples.',
+    '6. Keep answers concise (under 250 words unless a detailed explanation is requested).',
+    student.education_level ? `The student is at the ${student.education_level} level.` : '',
+    student.institution ? `They study at ${student.institution}.` : '',
+    student.learning_goals ? `Their learning goals are: ${student.learning_goals}.` : ''
   ].filter(Boolean).join('\n');
 }
 
@@ -159,7 +159,7 @@ export async function generateQuiz({ topic, subject = '', difficulty = 'Medium',
   ensureKey();
   const isTrueFalse = /true/i.test(questionType);
   
-  const prompt = `Write ${questionCount} ${difficulty} ${isTrueFalse ? 'True/False' : 'multiple-choice'} questions for a Kenyan student.
+  const prompt = `Write ${questionCount} ${difficulty} ${isTrueFalse ? 'True/False' : 'multiple-choice'} questions for a student.
 Subject: ${subject}
 Topic: ${topic}
 Return ONLY valid JSON:
