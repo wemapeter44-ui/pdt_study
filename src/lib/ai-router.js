@@ -4,7 +4,7 @@
 import { supabase } from './supabase';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const FAST_MODEL = 'gemini-3.8-flash'; // Google's stable, fast flash model
+const FAST_MODEL = 'gemini-3.5-flash'; // Google's stable, fast flash model
 
 const CHAT_TIMEOUT_MS = 15000; // Cut off after 15 seconds so it doesn't hang
 const QUIZ_TIMEOUT_MS = 30000;
@@ -183,3 +183,4 @@ Return ONLY valid JSON:
   const questions = raw.questions.map(q => normalizeQuestion(q, isTrueFalse)).filter(Boolean);
   return { title: raw.title || 'Quiz', questions };
 }
+
