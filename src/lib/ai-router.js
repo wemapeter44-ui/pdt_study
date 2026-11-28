@@ -1,32 +1,28 @@
 ﻿// src/lib/ai-router.js
-// Fast, direct Gemini integration for PDT Study.
+// Direct OpenRouter integration for PDT Study.
 
 import { supabase } from './supabase';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const FAST_MODEL = 'gemini-3.5-flash'; // Google's stable, fast flash model
+const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MODEL = 'nvidia/nemotron-3.5-super-vl:free';
 
-const CHAT_TIMEOUT_MS = 15000; // Cut off after 15 seconds so it doesn't hang
-const QUIZ_TIMEOUT_MS = 30000;
+const CHAT_TIMEOUT_MS = 25000;
+const QUIZ_TIMEOUT_MS = 35000;
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-function tidy(text, max) { return String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, max); }
-function stripThinking(text) { return String(text ?? '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim(); }
-
 function ensureKey() {
-  const key = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!key) throw new Error('Gemini API key is missing.');
+  const key = import.meta.env.VITE_OPENROUTER_API_KEY;
+  if (!key) throw new Error('OpenRouter API key is missing. Check your .env file.');
   return key;
 }
 
 function statusMessage(status) {
   if (status === 401 || status === 403) return 'API key rejected.';
   if (status === 429) return 'Too many requests. Please wait a moment.';
-  if (status >= 500) return 'Gemini is currently overloaded. Please try again.';
+  if (status >= 500) return 'The AI service is currently busy. Please try again.';
   return `AI request failed (${status}).`;
 }
 
@@ -35,11 +31,11 @@ function statusMessage(status) {
 /* ------------------------------------------------------------------ */
 
 const LEVELS = {
-  cbc: { short: 'CBC', label: 'CBC', guide: 'Use simple words and practical examples.' },
-  kcse: { short: 'KCSE', label: 'KCSE', guide: 'Pitch answers for secondary school. Show working.' },
-  university: { short: 'university', label: 'University', guide: 'Use university level terminology.' },
-  college: { short: 'college', label: 'College', guide: 'Use practical diploma level depth.' },
-  tvet: { short: 'TVET', label: 'TVET', guide: 'Focus on practical, hands-on skills.' }
+  cbc: { label: 'CBC', guide: 'Use simple words and practical examples.' },
+  kcse: { label: 'KCSE', guide: 'Pitch answers for secondary school. Show working.' },
+  university: { label: 'University', guide: 'Use university level terminology.' },
+  college: { label: 'College', guide: 'Use practical diploma level depth.' },
+  tvet: { label: 'TVET', guide: 'Focus on practical, hands-on skills.' }
 };
 
 async function getStudentContext() {
@@ -55,32 +51,30 @@ async function getStudentContext() {
 /* Core Fetch                                                          */
 /* ------------------------------------------------------------------ */
 
-async function callGemini({ messages, temperature, maxTokens, timeoutMs, json }) {
+async function callModel({ messages, temperature, maxTokens, timeoutMs, json }) {
   const key = ensureKey();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const systemMsg = messages.find(m => m.role === 'system')?.content || '';
-    const chatHistory = messages.filter(m => m.role !== 'system');
-
     const body = {
-      systemInstruction: { parts: [{ text: systemMsg }] },
-      contents: chatHistory.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      })),
-      generationConfig: {
-        temperature,
-        maxOutputTokens: maxTokens,
-        ...(json ? { responseMimeType: 'application/json' } : {})
-      }
+      model: MODEL,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
     };
 
-    const response = await fetch(`${GEMINI_API_URL}/${FAST_MODEL}:generateContent?key=${key}`, {
+    if (json) body.response_format = { type: 'json_object' };
+
+    const response = await fetch(API_URL, {
       method: 'POST',
       signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': window.location.origin,
+        'X-Title': 'PDT Study'
+      },
       body: JSON.stringify(body)
     });
 
@@ -89,9 +83,9 @@ async function callGemini({ messages, temperature, maxTokens, timeoutMs, json })
     }
 
     const data = await response.json();
-    if (data?.error) throw new Error(statusMessage(Number(data.error.code) || 500));
+    if (data?.error) throw new Error(data.error.message || 'AI error');
 
-    const content = stripThinking(data?.candidates?.[0]?.content?.parts?.[0]?.text);
+    const content = data?.choices?.[0]?.message?.content;
     if (!content) throw new Error('The AI returned an empty response.');
     return content;
 
@@ -129,7 +123,7 @@ export async function generateChatResponse(messages, context = {}) {
   const history = cleanMessages(messages);
   const student = await getStudentContext();
 
-  return callGemini({
+  return callModel({
     messages: [{ role: 'system', content: buildTutorPrompt(student) }, ...history],
     temperature: 0.3,
     maxTokens: 1000,
@@ -142,7 +136,7 @@ export async function generateChatResponse(messages, context = {}) {
 /* ------------------------------------------------------------------ */
 
 function extractQuizJSON(content) {
-  const cleaned = stripThinking(content).replace(/```json/gi, '').replace(/```/g, '').trim();
+  const cleaned = String(content).replace(/```json/gi, '').replace(/```/g, '').trim();
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
   if (firstBrace === -1 || lastBrace === -1) throw new Error('Invalid quiz JSON.');
@@ -171,7 +165,7 @@ Topic: ${topic}
 Return ONLY valid JSON:
 {"title":"Title","questions":[{"question":"...","options":["A","B"],"correctAnswer":"A","explanation":"..."}]}`;
 
-  const content = await callGemini({
+  const content = await callModel({
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.3,
     maxTokens: 2000,
@@ -183,4 +177,3 @@ Return ONLY valid JSON:
   const questions = raw.questions.map(q => normalizeQuestion(q, isTrueFalse)).filter(Boolean);
   return { title: raw.title || 'Quiz', questions };
 }
-
